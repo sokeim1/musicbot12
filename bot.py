@@ -19,7 +19,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 # from dotenv import load_dotenv
 from aiohttp import web
 
-from vk_music_downloader import VKMusicDownloader
+from yandex_music_downloader import YandexMusicDownloader
 
 # Загружаем переменные окружения
 # load_dotenv()
@@ -123,7 +123,7 @@ async def cmd_start(message: Message):
     await message.answer(
         "🎵 <b>Привет! Я @DownloaderSSMusicBot</b>\n\n"
         "💫 Я помогу тебе найти и скачать любую музыку\n\n"
-        "🎶 <b>Источник музыки:</b> VK Music\n"
+        "🎶 <b>Источник музыки:</b> Яндекс.Музыка\n"
         "✨ Просто отправь мне название песни или исполнителя!\n\n"
         "🌐 <i>Работаю на Koyeb хостинге</i>",
         parse_mode="HTML"
@@ -336,13 +336,13 @@ async def search_music(message: Message, state: FSMContext):
         return
     
     # Отправляем сообщение о начале поиска
-    search_msg = await message.answer("🔍 Ищу музыку в VK Music...")
+    search_msg = await message.answer("🔍 Ищу музыку в Яндекс.Музыке...")
     
     try:
         logger.info(f"Поиск музыки: '{query}' от пользователя {message.from_user.id}")
         
-        # Поиск треков в VK Music (увеличим лимит до 20)
-        downloader = VKMusicDownloader()
+        # Поиск треков в Яндекс.Музыке (увеличим лимит до 20)
+        downloader = YandexMusicDownloader()
         tracks = await downloader.search(query, limit=20)
         
         logger.info(f"Найдено {len(tracks)} треков для запроса: '{query}'")
@@ -447,8 +447,8 @@ async def callback_download(callback: CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Скачиваем трек из VK Music
-        downloader = VKMusicDownloader()
+        # Скачиваем трек из Яндекс.Музыки
+        downloader = YandexMusicDownloader()
         audio_data = await downloader.download_track(track['url'])
         
         if not audio_data:
@@ -611,9 +611,9 @@ async def main():
         
         # Закрываем сессии
         try:
-            # Закрываем VK Music сессию если есть
-            vk_downloader = VKMusicDownloader()
-            await vk_downloader.close()
+            # Закрываем Яндекс.Музыка сессию если есть
+            yandex_downloader = YandexMusicDownloader()
+            await yandex_downloader.close()
         except:
             pass
             
