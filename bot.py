@@ -583,33 +583,10 @@ async def main():
         # Запускаем keep-alive в фоне
         keep_alive_task = asyncio.create_task(keep_alive())
         
-        # Проверяем соединение с Telegram без таймаута
-        try:
-            logger.info("Подключение к Telegram...")
-            me = await bot.get_me()  # Убираем таймаут полностью
-            logger.info(f"✅ Подключение к Telegram успешно: @{me.username}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка подключения к Telegram: {e}")
-            logger.info("Продолжаем работу без проверки подключения...")
-        
-        # Удаляем старые обновления без таймаута
-        try:
-            logger.info("Удаление webhook...")
-            await bot.delete_webhook(drop_pending_updates=True)
-            logger.info("✅ Webhook удален успешно")
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка при удалении webhook: {e}, продолжаем...")
-        
         logger.info("✅ Бот готов к работе!")
         
-        # Запускаем polling с обработкой ошибок
-        while True:
-            try:
-                await dp.start_polling(bot, skip_updates=True)
-            except Exception as e:
-                logger.error(f"❌ Ошибка polling: {e}")
-                logger.info("🔄 Перезапуск через 5 секунд...")
-                await asyncio.sleep(5)
+        # Просто запускаем polling как раньше
+        await dp.start_polling(bot)
         
     except KeyboardInterrupt:
         logger.info("👋 Получен сигнал остановки")
