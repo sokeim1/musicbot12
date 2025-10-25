@@ -543,20 +543,28 @@ async def health_check(request):
     return web.Response(text="Bot is alive! 🎵", status=200)
 
 
+async def keep_alive():
+    """Keep-alive функция для предотвращения засыпания"""
+    while True:
+        try:
+            await asyncio.sleep(300)  # Каждые 5 минут
+            logger.info("Keep-alive ping")
+        except Exception as e:
+            logger.error(f"Keep-alive error: {e}")
+
+
 async def start_web_server():
-    """Запуск веб-сервера для keep-alive пингов"""
+    """Запуск веб-сервера для health checks"""
     app = web.Application()
     app.router.add_get('/', health_check)
     app.router.add_get('/health', health_check)
     
-    # Порт из переменной окружения или 8080 по умолчанию
-    port = int(os.getenv('PORT', 8080))
+    port = int(os.getenv('PORT', 8000))
     
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    
     logger.info(f"🌐 HTTP сервер запущен на порту {port}")
     return runner
 
@@ -565,17 +573,65 @@ async def main():
     """Главная функция запуска бота"""
     logger.info("🚀 Запуск бота...")
     
+    web_runner = None
+    keep_alive_task = None
+    
     try:
         # Запускаем HTTP сервер для пингов
         web_runner = await start_web_server()
         
-        # Удаляем старые обновления
-        await bot.delete_webhook(drop_pending_updates=True)
+        # Запускаем keep-alive в фоне
+        keep_alive_task = asyncio.create_task(keep_alive())
         
-        # Запускаем polling
-        await dp.start_polling(bot)
+        # Проверяем соединение с Telegram
+        try:
+            me = await asyncio.wait_for(bot.get_me(), timeout=15.0)
+            logger.info(f"✅ Подключение к Telegram успешно: @{me.username}")
+        except asyncio.TimeoutError:
+            logger.error("❌ Таймаут при подключении к Telegram")
+            return
+        except Exception as e:
+            logger.error(f"❌ Ошибка подключения к Telegram: {e}")
+            return
         
+        # Удаляем старые обновления с обработкой таймаута
+        try:
+            await asyncio.wait_for(
+                bot.delete_webhook(drop_pending_updates=True), 
+                timeout=10.0
+            )
+            logger.info("✅ Webhook удален успешно")
+        except asyncio.TimeoutError:
+            logger.warning("⚠️ Таймаут при удалении webhook, продолжаем...")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при удалении webhook: {e}, продолжаем...")
+        
+        logger.info("✅ Бот готов к работе!")
+        
+        # Запускаем polling с обработкой ошибок
+        while True:
+            try:
+                await dp.start_polling(bot, skip_updates=True)
+            except Exception as e:
+                logger.error(f"❌ Ошибка polling: {e}")
+                logger.info("🔄 Перезапуск через 5 секунд...")
+                await asyncio.sleep(5)
+        
+    except KeyboardInterrupt:
+        logger.info("👋 Получен сигнал остановки")
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка: {e}", exc_info=True)
     finally:
+        logger.info("🛑 Завершение работы бота...")
+        
+        # Отменяем keep-alive задачу
+        if keep_alive_task:
+            keep_alive_task.cancel()
+            try:
+                await keep_alive_task
+            except asyncio.CancelledError:
+                pass
+        
         # Закрываем сессии
         try:
             # Закрываем VK Music сессию если есть
@@ -584,9 +640,16 @@ async def main():
         except:
             pass
             
-        await bot.session.close()
+        try:
+            await bot.session.close()
+        except:
+            pass
+            
         if web_runner:
-            await web_runner.cleanup()
+            try:
+                await web_runner.cleanup()
+            except:
+                pass
 
 
 if __name__ == '__main__':
