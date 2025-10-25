@@ -583,26 +583,20 @@ async def main():
         # Запускаем keep-alive в фоне
         keep_alive_task = asyncio.create_task(keep_alive())
         
-        # Проверяем соединение с Telegram
+        # Проверяем соединение с Telegram без таймаута
         try:
-            me = await asyncio.wait_for(bot.get_me(), timeout=15.0)
+            logger.info("Подключение к Telegram...")
+            me = await bot.get_me()  # Убираем таймаут полностью
             logger.info(f"✅ Подключение к Telegram успешно: @{me.username}")
-        except asyncio.TimeoutError:
-            logger.error("❌ Таймаут при подключении к Telegram")
-            return
         except Exception as e:
             logger.error(f"❌ Ошибка подключения к Telegram: {e}")
-            return
+            logger.info("Продолжаем работу без проверки подключения...")
         
-        # Удаляем старые обновления с обработкой таймаута
+        # Удаляем старые обновления без таймаута
         try:
-            await asyncio.wait_for(
-                bot.delete_webhook(drop_pending_updates=True), 
-                timeout=10.0
-            )
+            logger.info("Удаление webhook...")
+            await bot.delete_webhook(drop_pending_updates=True)
             logger.info("✅ Webhook удален успешно")
-        except asyncio.TimeoutError:
-            logger.warning("⚠️ Таймаут при удалении webhook, продолжаем...")
         except Exception as e:
             logger.warning(f"⚠️ Ошибка при удалении webhook: {e}, продолжаем...")
         
