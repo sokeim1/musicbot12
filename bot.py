@@ -585,8 +585,14 @@ async def main():
         
         logger.info("✅ Бот готов к работе!")
         
-        # Просто запускаем polling как раньше
-        await dp.start_polling(bot)
+        # Запускаем polling с обработкой таймаутов
+        while True:
+            try:
+                await dp.start_polling(bot)
+            except Exception as e:
+                logger.error(f"Ошибка polling: {e}")
+                logger.info("Перезапуск через 3 секунды...")
+                await asyncio.sleep(3)
         
     except KeyboardInterrupt:
         logger.info("👋 Получен сигнал остановки")

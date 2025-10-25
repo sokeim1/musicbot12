@@ -258,8 +258,8 @@ class VKMusicDownloader:
             # Для демонстрации создаем фейковый аудио файл
             # В реальности здесь был бы запрос к VK API
             
-            # Имитируем процесс скачивания
-            await asyncio.sleep(1)  # Имитация загрузки
+            # Имитируем процесс скачивания (более реалистично)
+            await asyncio.sleep(2)  # Имитация загрузки 2-3 секунды
             
             # Создаем минимальный MP3 заголовок (фейковый файл для теста)
             fake_mp3_data = self._create_fake_mp3()
@@ -272,11 +272,37 @@ class VKMusicDownloader:
             return None
     
     def _create_fake_mp3(self) -> bytes:
-        """Создает минимальный MP3 файл для тестирования"""
-        # Минимальный MP3 заголовок + немного данных
-        mp3_header = b'\xff\xfb\x90\x00'  # MP3 заголовок
-        mp3_data = b'\x00' * 1024  # 1KB нулевых данных
-        return mp3_header + mp3_data
+        """Создает реалистичный MP3 файл для тестирования"""
+        # Создаем более реалистичный MP3 файл (около 2-3 МБ)
+        
+        # MP3 заголовок для 128kbps, 44.1kHz, стерео
+        mp3_header = b'\xff\xfb\x90\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        
+        # Создаем данные для ~3 минутного трека (примерно 2.8 МБ)
+        # 128 kbps = 16 KB/s, 3 минуты = 180 секунд = ~2.8 МБ
+        file_size = 2800 * 1024  # 2.8 МБ
+        
+        # Генерируем псевдо-случайные данные вместо нулей
+        import random
+        random.seed(42)  # Фиксированный seed для воспроизводимости
+        
+        # Создаем блоки данных
+        data_blocks = []
+        block_size = 1024
+        
+        for i in range(file_size // block_size):
+            # Создаем блок с псевдо-случайными данными
+            block = bytearray(block_size)
+            for j in range(block_size):
+                # Генерируем байт с некоторой структурой (имитация аудио)
+                value = (random.randint(0, 255) + i + j) % 256
+                block[j] = value
+            data_blocks.append(bytes(block))
+        
+        # Собираем файл
+        mp3_data = mp3_header + b''.join(data_blocks)
+        
+        return mp3_data
     
     async def close(self):
         """Закрытие сессии"""
